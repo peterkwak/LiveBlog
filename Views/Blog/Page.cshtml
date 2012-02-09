@@ -1,0 +1,71 @@
+﻿@model IEnumerable<BlogApp.Models.Post>
+
+           
+<script src="@Url.Content("~/Scripts/jquery-1.4.4.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+           
+@using BlogApp.Helpers
+
+@{
+    ViewBag.Title = "Page " + ViewBag.PageId;
+}
+
+<h2>Blog</h2>
+
+<p>
+   
+</p>
+<div style="width:700px">
+@if (Session["Name"] == null)
+{
+    <p>
+    @Html.ActionLink("Create User", "PostUser")
+    </p>
+}
+else
+{
+    <div style="float:left">
+        Logged in as @Session["Name"]
+    </div>
+    <div style="float:right">
+        @Html.ActionLink("Logout", "LogOut")
+    </div>
+    <div><br /><br />
+        @Html.ActionLink("Create a message", "Create")
+
+    </div>
+}
+</div>
+
+<table style="width:700px">
+    <tr>
+        <th style="text-align:right">
+        @{
+            int post_limit = 10;
+        }
+        Page&nbsp;
+        @for (int count = 1; count <= ((ViewBag.Count / post_limit) + 1); count++)
+        {
+            @Html.ActionLink(count.ToString() + " ", "Page", new { id = count })
+        }
+        
+            
+        </th>
+   
+    </tr>
+
+@foreach (var item in Model)
+{
+    <tr>
+        <td>
+            <div>@item.Body</div><br />
+            <div class="post-namedate">
+            by @item.Name at @String.Format("{0:g}", item.DateCreated)
+            </div>
+        </td>
+    </tr>
+}
+
+</table>
+

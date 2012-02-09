@@ -1,0 +1,264 @@
+﻿@{
+    ViewBag.Title = "Blog";
+}
+
+<h2>BlogTest</h2>
+
+
+<script type="text/javascript">
+
+
+    function logOut() {
+        $.ajax({
+            url: '/home/logout',
+            type: 'POST',
+            data: '',
+            success: function (data) {
+                if (data === true) {
+                    $('#loginform').empty();
+                    $.get('@Url.Action("LoginForm", "Home")',
+                        function (data) {
+                            $('#loginform').append(data);
+                        });
+                }
+            }
+        });
+    }
+
+    Array.max = function (array) {
+        return Math.max.apply(Math, array);
+    };
+
+
+    function loginSlideDown() {
+        $('.invalid').remove();
+        $('input#Name').removeClass('input-validation-error');
+        $('#loginform').slideToggle("slow");
+    }
+
+    function prependListItem(listName, listItemHTML) {
+        $(listItemHTML)
+            .hide()
+            .css('opacity', 0.0)
+            .prependTo('# + listName')
+            .slideDown('slow')
+            .animate({ opacity: 1.0 })
+    }
+
+    $(document).ready(function () {
+        var page_id = '@ViewBag.PageId';
+        var name = '@Session["Name"]';
+        var logout = '<a href="#" onClick="logOut()">logout</a>';
+        var login_success = '<p>Logged in as: ' + name + '     ' + logout + '</p>';
+
+        $('#loginform').toggle();
+
+        if (name === '') {
+            $.get('@Url.Action("LoginForm", "Home")',
+                function (data) {
+                    $('#loginform').append(data);
+                });
+        }
+        else {
+            $('#loginform').empty();
+            $('#loginform').append(login_success);
+            $.get('@Url.Action("AddPost", "Home")',
+                function (data) {
+                    $('#loginform').append(data);
+                });
+        }
+
+        var postIds = new Array();
+        var postIds_max = '';
+
+        $.ajax({
+            url: '/home/getrecentposts',
+            type: 'post',
+            data: { id: page_id },
+            dataType: 'json',
+            success: function (result) {
+
+                var insert = '';
+
+                $.each(result, function (index, item) {
+                    dateDes = DateDeserialize(item.DateCreated);
+                    hourTime = dateGetHour(dateDes);
+                    insert += '<li>' + item.Body + '<br /><br />' + 'posted by ' + item.Name + ' at ' + hourTime + '</li>';
+                    postIds.push(item.PostId);
+                });
+                postIds_max = Array.max(postIds);
+                $('#posts_list li:first').before(insert);
+            }
+
+        }); // end of ajax
+        
+
+        if (page_id == 1) {
+            setInterval(function () {
+                $.ajax({
+                    url: '/home/updateposts',
+                    type: 'GET',
+                    dataType: 'json',
+                    data: { val: postIds_max },
+                    success: function (result) {
+                        var insert = '';
+
+                        $.each(result, function (index, item) {
+                            dateDes = DateDeserialize(item.DateCreated);
+                            hourTime = dateGetHour(dateDes);
+                            insert += '<li>' + item.Body + '<br /><br />' + 'posted by ' + item.Name + ' at ' + hourTime + '</li>';
+                            postIds.push(item.PostId);
+
+
+                        }); // end of each loop
+                        if (result != false) {
+                            $(insert).hide().css('opacity', 0.0).prependTo('#posts_list').slideDown('slow').animate({ opacity: 1.0 })
+                        }
+
+                        postIds_max = Array.max(postIds);
+
+                        // figure out a for loop using postIds array to remove <tr>'s from blogtable when postIds.length > 15 
+                    }
+                }); // end of ajax
+            },
+            6000
+            ); // end of setinterval 
+        } // end of if for setinterval
+
+
+
+    });                                        // END OF DOCUMENT.READY
+
+
+
+
+    function NewUserLogin() {
+        var name = $('#Name').val();
+        var logout = '<a href="#" onClick="logOut()">logout</a>';
+        var invalidmsg = '<div class="invalid">Name is required</div>';
+        var login_success = '<p>Logged in as: ' + name + '     ' + logout + '</p>';
+
+
+        if (name == '') {
+            $('.invalid').remove();
+            $('.editor-field').append(invalidmsg);
+            if ($('input#Name').hasClass('input-validation-error')) {
+            }
+            else {
+                $('input#Name').toggleClass('input-validation-error');
+            }
+        }
+        else {
+            $.ajax({
+                url: '/home/loginform',
+                type: 'POST',
+                data: { name: name },
+                success: function (data) {
+                    if (data === true) {
+                        $('#loginform').empty();
+                        $('#loginform').append(login_success);
+                        $.get('@Url.Action("AddPost", "Home")',
+                              function (data) {
+                                  $('#loginform').append(data);
+                              });
+                    }
+                    else {
+                        alert('Failed to save the user');
+                    }
+                }
+            });
+        }
+
+    }
+
+    function addNewPost() {
+        var body = $('#body').val();
+        $.ajax({
+            url: '/home/addpost',
+            type: 'POST',
+            data: { body: body },
+            success: function (data) {
+                if (data === true) {
+                    $('#body').val('');
+                    alert('SAVED!');
+                }
+            }
+        });
+    }
+
+
+    function DateDeserialize(dateStr) {
+        return eval('new' + dateStr.replace(/\//g, ' '));
+    }
+
+    function dateGetHour(dateString) {
+        var dt = new Date(dateString);
+        var hrs = dt.getHours();
+        var ampm = '';
+
+        if (hrs > 12) {
+            var hrs12 = hrs - 12;
+            ampm = 'PM';
+        }
+        else {
+            hrs12 = hrs;
+            ampm = 'AM';
+        }
+        if (hrs == 12) {
+            ampm = 'PM';
+        }
+        if (hrs12 == 0) {
+            hrs12 = 12;
+            ampm = 'AM';
+        }
+
+
+        var mins = dt.getMinutes();
+        if (mins < 10) {
+            var minsF = '0' + mins;
+            var returnTime = hrs12 + ":" + minsF + ' ' + ampm;
+        }
+        else {
+            returnTime = hrs12 + ':' + mins + ' ' + ampm;
+        }
+
+        return returnTime;
+    };
+</script>
+<div>
+<a href="#" onclick="loginSlideDown()">Make a comment</a>
+<div id="loginform" style="width:700px">
+
+
+</div>
+
+<div id="loggedin" style="width:700px">
+
+</div>
+
+</div>
+<table>
+  <tr>
+        <th style="text-align:right">
+        @{
+            int post_limit = 10;
+        }
+        Page&nbsp;
+        @for (int count = 1; count <= ((ViewBag.Count / post_limit) + 1); count++)
+        {
+            @Html.ActionLink(count.ToString() + " ", "BlogTest", new { id = count })
+        }
+        
+            
+        </th>
+   
+    </tr>
+</table>
+<ul id="posts_list">
+<li></li>
+</ul>
+<table id="blogTable">
+
+    <tr></tr>
+</table>
+

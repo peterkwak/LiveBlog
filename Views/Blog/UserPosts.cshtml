@@ -1,0 +1,52 @@
+﻿@model IEnumerable<BlogApp.Models.Post>
+
+@{
+    ViewBag.Title = "UserPosts";
+}
+
+<h2>UserPosts</h2>
+
+<p>
+    @Html.ActionLink("Create New", "Create")
+</p>
+<table>
+    <tr>
+        <th></th>
+        <th>
+            UserId
+        </th>
+        <th>
+            Body
+        </th>
+        <th>
+            DateCreated
+        </th>
+        <th>
+            Name
+        </th>
+    </tr>
+
+@foreach (var item in Model) {
+    <tr>
+        <td>
+            @Html.ActionLink("Edit", "Edit", new { id=item.PostId }) |
+            @Html.ActionLink("Details", "Details", new { id=item.PostId }) |
+            @Html.ActionLink("Delete", "Delete", new { id=item.PostId })
+        </td>
+        <td>
+            @item.UserId
+        </td>
+        <td>
+            @item.Body
+        </td>
+        <td>
+            @String.Format("{0:g}", item.DateCreated)
+        </td>
+        <td>
+            @item.Name
+        </td>
+    </tr>
+}
+
+</table>
+

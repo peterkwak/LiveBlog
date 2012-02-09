@@ -1,0 +1,336 @@
+﻿@{
+    ViewBag.Title = "LiveBlog";
+}
+
+<h2>@ViewBag.Topic</h2>
+
+
+<script type="text/javascript">
+
+
+    $(document).ready(function () {
+        var page_id = '@ViewBag.PageId';   // used in both /home/getrecentposts and /home/updateposts
+        var page_topic = '@ViewBag.Topic'; // used in both /home/getrecentposts and /home/updateposts
+        var username = '@User.Identity.Name';
+        var authenticated_user = false;
+        var name = '@Session["Name"]';     // used in both /home/getrecentposts and /home/updateposts
+        var sId = '@Session["UserId"]';
+
+        if (username != '') {
+            name = username;
+            authenticated_user = true;
+        }
+        var logout = '<a href="#" onClick="logOut()">logout</a>';
+        var login_success = '<p>Logged in as: ' + name + ' ' + logout + '</p>';
+        var login_success2 = '<p>Logged in as: ' + name + '</p>';
+
+        $('#loginform').toggle();
+
+        if (name === '') {
+            $.get('@Url.Action("LoginForm", "Home")',
+                function (data) {
+                    $('#loginform').append(data);
+                });
+        }
+        else {
+            $('#loginform').empty();
+            if (authenticated_user == true) {
+                $('#loginform').append(login_success2);
+            }
+            else {
+                $('#loginform').append(login_success);
+            }
+            $.get('@Url.Action("AddPost", "Home")',
+                function (data) {
+                    $('#loginform').append(data);
+                });
+        }
+
+        var postIds = new Array();
+        var postIds_max = '';
+        var insert = '';
+        var vote_up = '';
+        var vote_up_has_voted_up = '';
+        var vote_up_has_voted_down = '';
+        var vote_down = '';
+        var vote_down_has_voted_up = '';
+        var vote_down_has_voted_down = '';
+
+
+        $.getJSON('/home/getrecentposts', { topic: page_topic, id: page_id }, function (result) {
+            $.each(result, function (index, item) {
+
+                dateDes = DateDeserialize(item.DateCreated);
+                hourTime = dateGetHour(dateDes);
+
+                // variables 
+                vote_up = '<div class="vote_up" id="vote_up_' + item.PostId + '" onclick="Vote(' + item.PostId + ',1)">Vote Up</div>';
+                vote_up_has_voted_up = '<div class="vote_up" id="vote_up_' + item.PostId + '" onclick="VoteReset(' + item.PostId + ',-1)">Vote Up</div>';
+
+                // give these variables the unique ids
+                vote_up_has_voted_down = '<div class="vote_up" onclick="Vote(' + item.PostId + ',2)">Vote Up</div>';
+                vote_down = '<div class="vote_down" onclick="Vote(' + item.PostId + ',-1)">Vote Down</div>';
+                vote_down_has_voted_up = '<div class="vote_down" onclick="Vote(' + item.PostId + ',-2)">Vote Down</div>';
+                vote_down_has_voted_down = '<div class="vote_down" onclick="VoteReset(' + item.PostId + ',1)">Vote Down</div>';
+                votes = '<div id = "vote_' + item.PostId + '" class="votes">' + item.Votes + '</div>';
+                var vote_module = ''; // DONT CHANGE THIS, KEEP IT INITIALIZED INSIDE THE EACH FUNCTION
+
+
+                if (name != '' || username != '') {
+                    $.ajax({
+                        type: 'GET',
+                        // async: false,
+                        url: '/home/findvotebyid',
+                        data: { id: item.PostId, sId: sId, uName: username },
+                        dataType: 'json',
+                        success: function (data) {
+
+                            if (data.Votes == 1 || data.Votes == 2) {
+                                vote_module += vote_up_has_voted_up + votes + vote_down_has_voted_up;
+                            }
+                            else if (data.Votes == -1 || data.Votes == -2) {
+                                vote_module += vote_up_has_voted_down + votes + vote_down_has_voted_down;
+                            }
+                            else if (data.Votes == 0) {
+                                vote_module += vote_up + votes + vote_down;
+                            }
+                            else if (data === false) {
+                                vote_module += vote_up + votes + vote_down;
+                            }
+                            else {
+                                return false;
+                            }
+                        }
+                    });
+                }
+         
+                insert += '<li id="Post_' + item.PostId + '">' + item.Body + '<br /><br />' + 'posted by ' + item.Name + ' at '
+                + hourTime + '<br />' + vote_module + '</li>';
+                
+                postIds.push(item.PostId);
+
+            });
+            postIds_max = Array.max(postIds);
+            $('#posts_list').append(insert);
+        }); // end of getjson
+
+        if (page_id == 1) {
+            setInterval(function () {
+                $.getJSON('/home/updateposts', { val: postIds_max, topic: page_topic }, function (result) {
+                    var insert = '';
+                    postIds = [postIds_max];
+
+                    $.each(result, function (index, item) {
+                        dateDes = DateDeserialize(item.DateCreated);
+                        hourTime = dateGetHour(dateDes);
+                        vote_up = '<div class="vote_up" onclick="Vote(' + item.PostId + ',1)">Vote Up</div>';
+                        vote_down = '<div class="vote_down" onclick="Vote(' + item.PostId + ',-1)">Vote Down</div>';
+                        votes = '<div id = "vote_' + item.PostId + '" class="votes">' + item.Votes + '</div>';
+
+                        insert += '<li id="Post_' + item.PostId + '">' + item.Body + '<br /><br />' + 'posted by '
+                                    + item.Name + ' at ' + hourTime + '<br />' + vote_up + votes + vote_down + '</li>';
+
+                        postIds.push(item.PostId);
+
+                    }); // end of each loop
+                    if (result != false) {
+                        $(insert).hide().css('opacity', 0.0).prependTo('#posts_list').slideDown('slow').animate({ opacity: 1.0 })
+                    }
+
+                    postIds_max = Array.max(postIds);
+
+                    // figure out a for loop using postIds array to remove <tr>'s from blogtable when postIds.length > 15 
+
+                }); // end of getjson
+            },
+            6000
+            ); // end of setinterval 
+        } // end of if for setinterval
+    });                                                                                                   // END OF DOCUMENT.READY
+
+    // Variables
+    var page_topic = '@ViewBag.Topic';
+    var username = '@User.Identity.Name';
+    var sId = '@Session["UserId"]';
+    var request_in_process = false;
+
+    function logOut() {
+        $.post('/home/logout', function (data) {
+            if (data === true) {
+                $('#loginform').empty();
+                $.get('@Url.Action("LoginForm", "Home")',
+                    function (data) {
+                        $('#loginform').append(data);
+                    });
+            }
+        });
+    }
+
+    Array.max = function (array) {
+        return Math.max.apply(Math, array);
+    };
+
+
+    function loginSlideDown() {
+        $('#loginform').slideToggle(400);
+
+    }
+
+    function Vote(id, vote) {
+        if (!request_in_process) {
+            request_in_process = true;
+            $.post('/home/votechange', { id: id, change: vote }, function (result) {
+                $('#vote_' + id).empty();
+                $('#vote_' + id).append(result.Votes);
+
+                // variables
+                var vote_up = '<div class="vote_up" id="vote_up_' + id + '" onclick="Vote(' + id + ',1)">Vote Up</div>';
+                var vote_up_has_voted_up = '<div class="vote_up" id="vote_up_' + id + '" onclick="VoteReset(' + id + ',-1)">Vote Up</div>';
+
+
+                $.get('/home/findvotebyid', { id: id, sId: sId, uName: username }, function (data) {
+                        if (data.Votes == 1) {
+                            $('#vote_up_' + id).replaceWith(vote_up_has_voted_up); // works
+                        }
+                });
+                request_in_process = false;
+            });        // end of post
+        } // end of if function
+
+    }
+
+    function VoteReset(id, vote) {
+        if (!request_in_process) {
+            request_in_process = true;
+            $.post('/home/votereset', { id: id, change: vote }, function (result) {
+                $('#vote_' + id).empty();
+                $('#vote_' + id).append(result.Votes);
+
+                // variables
+                var vote_up = '<div class="vote_up" id="vote_up_' + id + '" onclick="Vote(' + id + ',1)">Vote Up</div>';
+
+                $.get('/home/findvotebyid', { id: id, sId: sId, uName: username }, function (data) {
+                    if (data.Votes == 0) {
+                        $('#vote_up_' + id).replaceWith(vote_up);  // works
+                    }
+
+                });
+                request_in_process = false;
+            });  // end of post
+        } // end of if function
+
+    }
+
+
+    function nameFocus() {
+        if ($('#Name').val() == 'Enter name here:') {
+            $('#Name').val('');
+        }
+    }
+
+    function nameBlur() {
+        if ($('#Name').val() == '') {
+            $('#Name').val('Enter name here:');
+        }
+    }
+
+    function NewUserLogin() {
+        var name = $('#Name').val();
+        var logout = '<a href="#" onClick="logOut()">logout</a>';
+        var login_success = '<p>Logged in as: ' + name + '     ' + logout + '</p>';
+
+
+        if (name == '' || name == 'Enter name here:') {
+            alert('Please enter a name.');
+        }
+        else {
+            $.post('/home/loginform', { name: name }, function (data) {
+                if (data === true) {
+                    $('#loginform').empty();
+                    $('#loginform').append(login_success);
+                    $.get('@Url.Action("AddPost", "Home")',
+                        function (data) {
+                            $('#loginform').append(data);
+                        });
+                }
+                else {
+                    alert('Failed to save the user');
+                }
+            });
+        }
+
+    }
+
+    function addNewPost() {
+        var body = $('#body').val();
+        if (body == '') {
+            alert('Please enter a message.');
+        }
+        else {
+            $.post('/home/addpost', { body: body, topic: page_topic }, function (data) {
+                if (data === true) {
+                    $('#body').val('');
+                    alert('SAVED!');
+                }
+            });
+        }
+    }
+
+    function DateDeserialize(dateStr) {
+        return eval('new' + dateStr.replace(/\//g, ' '));
+    }
+
+    function dateGetHour(dateString) {
+        var dt = new Date(dateString);
+        var hrs = dt.getHours();
+        var ampm = '';
+
+        if (hrs > 12) {
+            var hrs12 = hrs - 12;
+            ampm = 'PM';
+        }
+        else {
+            hrs12 = hrs;
+            ampm = 'AM';
+        }
+        if (hrs == 12) {
+            ampm = 'PM';
+        }
+        if (hrs12 == 0) {
+            hrs12 = 12;
+            ampm = 'AM';
+        }
+
+
+        var mins = dt.getMinutes();
+        if (mins < 10) {
+            var minsF = '0' + mins;
+            var returnTime = hrs12 + ":" + minsF + ' ' + ampm;
+        }
+        else {
+            returnTime = hrs12 + ':' + mins + ' ' + ampm;
+        }
+
+        return returnTime;
+    };
+</script>
+<div id="main_container">
+<a href="#" onclick="loginSlideDown()">Make a comment</a>
+<div id="loginform">
+</div>
+
+<ul id="posts_list">
+
+</ul>
+<div id="page_numbers">
+        @{
+            int post_limit = 10;
+        }
+        Page&nbsp;
+        @for (int count = 1; count <= ((ViewBag.Count / post_limit) + 1); count++)
+        {
+            @Html.ActionLink(count.ToString() + " ", "Blog", new { id = count })
+        }
+        
+</div>
+</div>

@@ -1,0 +1,12 @@
+﻿@model IEnumerable<BlogApp.ViewModels.MyCounts>
+@{
+    ViewBag.Title = "LiveBlog";
+}
+
+<h3>All Topics</h3>
+<ul id="popular">
+@foreach (var item in Model)
+{
+    <li>@Html.ActionLink(item.Topic, "Blog", new { topic = item.Topic }) | @item.Count</li> 
+}
+</ul>

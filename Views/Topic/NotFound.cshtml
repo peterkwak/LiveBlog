@@ -1,0 +1,50 @@
+﻿@{
+    ViewBag.Title = "Topic Not Found";
+}
+<script type="text/javascript">
+    $(document).ready(function () {
+        $.get('@Url.Action("AddPost", "Home")',
+            function (data) {
+                $('#addpost').append(data);
+            });
+   }); // end of document ready
+
+    var page_topic = '@ViewBag.Topic';
+    page_topic = page_topic.toLowerCase().replace(/ /g, "-"); // replaces spaces with hyphens
+
+
+    function addNewPost() {
+        var body = $('#body').val();
+        if (body == '') {
+            alert('Please enter a message.');
+        }
+        else {
+            $.ajax({
+                url: '/home/addpost',
+                type: 'POST',
+                data: { body: body, topic: page_topic },
+                success: function (data) {
+                    if (data === true) {
+                        $('#body').val('');
+                        alert('SAVED!');
+                        window.location.replace('/topic/' + page_topic);
+                    }
+                }
+            });
+        }
+    }
+    
+</script>
+<h2>Sorry, the topic "@ViewBag.Topic" has not been found.</h2>
+@if(Request.IsAuthenticated) {
+    <p>Would you like to create "@ViewBag.Topic"?</p>
+    <p>Start one by posting a message here.</p>
+    <div id="addpost">
+    
+    </div>
+    
+}
+else {
+    <p>If you would like to start your own Topic, then please sign up for an account @Html.ActionLink("here", "LogOn", "Account"). </p>
+}
+
